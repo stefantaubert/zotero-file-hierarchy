@@ -1,8 +1,14 @@
 declare const Zotero: any
 declare const OS: any
 
-function debug(msg) {
-  Zotero.debug(`File hierarchy: ${msg}`)
+function debug(msg, src: string="test") {
+  Zotero.debug(`File hierarchy: ${src} -> ${msg}`)
+}
+
+interface IItem{
+  itemType: string;
+  attachments?: string[];
+  collections?: string[];
 }
 
 class Collections {
@@ -14,9 +20,10 @@ class Collections {
 
     while (coll = Zotero.nextCollection()) {
       this.register(coll)
+      debug(JSON.stringify(coll), "constructor");
     }
 
-    debug('collections: ' + JSON.stringify(this.path))
+    debug('collections: ' + JSON.stringify(this.path), "constructor2")
   }
 
   private join(...p: string[]) {
@@ -45,7 +52,8 @@ class Collections {
     return (dot < 1 || dot === (filename.length - 1)) ? [ filename, '' ] : [ filename.substring(0, dot), filename.substring(dot) ]
   }
 
-  save(item) {
+  save(item:IItem) {
+    debug(JSON.stringify(item), "save_item");
     const attachments = (item.itemType === 'attachment') ? [ item ] : (item.attachments || [])
     let collections = (item.collections || []).map(key => this.path[key]).filter(coll => coll)
     if (!collections.length) collections = [ '' ] // if the item is not in a collection, save it in the root.
@@ -57,6 +65,9 @@ class Collections {
       const subdir = att.contentType === 'text/html' ? base : ''
 
       for (const coll of collections) {
+        debug(JSON.stringify(coll), "collections");
+        //const childs = coll.getChildItems();
+
         const path = this.join(coll, subdir, base)
 
         let filename = `${path}${ext}`
@@ -66,7 +77,7 @@ class Collections {
         }
         this.saved[filename.toLowerCase()] = true
 
-        debug(JSON.stringify(filename))
+        debug(JSON.stringify(filename), "collections2")
         att.saveFile(filename, true)
         Zotero.write(`${filename}\n`)
       }

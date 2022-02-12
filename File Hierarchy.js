@@ -16,11 +16,11 @@
   "browserSupport": "gcsv",
   "priority": 100,
   "inRepository": false,
-  "lastUpdated": "2021-12-30 13:05:34"
+  "lastUpdated": "2022-02-12 12:04:41"
 }
 
-function debug(msg) {
-    Zotero.debug(`File hierarchy: ${msg}`);
+function debug(msg, src = "test") {
+    Zotero.debug(`File hierarchy: ${src} -> ${msg}`);
 }
 class Collections {
     constructor() {
@@ -29,8 +29,9 @@ class Collections {
         let coll;
         while (coll = Zotero.nextCollection()) {
             this.register(coll);
+            debug(JSON.stringify(coll), "constructor");
         }
-        debug('collections: ' + JSON.stringify(this.path));
+        debug('collections: ' + JSON.stringify(this.path), "constructor2");
     }
     join(...p) {
         return p.filter(_ => _).join('/');
@@ -53,6 +54,7 @@ class Collections {
         return (dot < 1 || dot === (filename.length - 1)) ? [filename, ''] : [filename.substring(0, dot), filename.substring(dot)];
     }
     save(item) {
+        debug(JSON.stringify(item), "save_item");
         const attachments = (item.itemType === 'attachment') ? [item] : (item.attachments || []);
         let collections = (item.collections || []).map(key => this.path[key]).filter(coll => coll);
         if (!collections.length)
@@ -63,6 +65,8 @@ class Collections {
             const [base, ext] = this.split(this.clean(att.filename));
             const subdir = att.contentType === 'text/html' ? base : '';
             for (const coll of collections) {
+                debug(JSON.stringify(coll), "collections");
+                //const childs = coll.getChildItems();
                 const path = this.join(coll, subdir, base);
                 let filename = `${path}${ext}`;
                 let postfix = 0;
@@ -70,7 +74,7 @@ class Collections {
                     filename = `${path}_${++postfix}${ext}`;
                 }
                 this.saved[filename.toLowerCase()] = true;
-                debug(JSON.stringify(filename));
+                debug(JSON.stringify(filename), "collections2");
                 att.saveFile(filename, true);
                 Zotero.write(`${filename}\n`);
             }
