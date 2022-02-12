@@ -7,8 +7,8 @@ function debug(msg, src: string="test") {
 
 interface IItem{
   itemType: string;
-  attachments?: string[];
-  collections?: string[];
+  attachments?: any[];
+  collections?: any[];
 }
 
 class Collections {
@@ -88,9 +88,9 @@ class Collections {
 function doExport() {
   if (!Zotero.getOption('exportFileData')) throw new Error('File Hierarchy needs "Export File Data" to be on')
 
-  const collections = new Collections
+  const collections = new Collections();
 
-  let item
+  let item: IItem;
   while ((item = Zotero.nextItem())) {
     collections.save(item)
   }

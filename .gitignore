@@ -1,2 +1,3 @@
-node_modules
-layer1
+node_modules/
+layer1/
+dist/

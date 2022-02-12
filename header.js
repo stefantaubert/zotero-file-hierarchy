@@ -1,6 +1,6 @@
 const fs = require('fs')
 
-const body = fs.readFileSync('File Hierarchy.js', 'utf-8')
+const body = fs.readFileSync('dist/File Hierarchy.js', 'utf-8')
 const header = JSON.stringify({
   'translatorID': '86ffd88b-6f4e-4bec-a5be-839c1034beb2',
   'label': 'File Hierarchy',
@@ -22,4 +22,4 @@ const header = JSON.stringify({
   'lastUpdated': fs.statSync('File Hierarchy.ts').mtime.toISOString().replace('T', ' ').replace(/\..*/, ''),
 }, null, 2)
 
-fs.writeFileSync('File Hierarchy.js', header + '\n\n' + body)
+fs.writeFileSync('dist/File Hierarchy.js', header + '\n\n' + body)

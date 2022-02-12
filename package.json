@@ -2,10 +2,10 @@
   "name": "zotero-file-hierarchy",
   "version": "1.0.0",
   "description": "Export files according to collection organisation",
-  "main": "File Hierarchy.js",
+  "main": "dist/File Hierarchy.js",
   "scripts": {
-    "start": "tsc --target ES2017 --moduleResolution node 'File Hierarchy.ts' && node header.js",
-    "test": "npm start && rm -rf 'layer1' && cp 'File Hierarchy.js' /home/user/Zotero/translators/",
+    "start": "tsc --target ES2017 --moduleResolution node 'File Hierarchy.ts' --outDir 'dist' && node header.js",
+    "test": "npm start && rm -rf 'layer1' && cp 'dist/File Hierarchy.js' /home/user/Zotero/translators/",
     "push": "npm start && git add . && git commit -m update && git push"
   },
   "repository": {
