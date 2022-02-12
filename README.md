@@ -19,11 +19,17 @@ When installed in Zotero, this translator will allow exporting attachments of it
 ## Dev
 
 https://www.zotero.org/support/dev/translators/coding
+
 npm i @types/node
+
+/opt/Zotero_linux-x86_64/zotero
+after each start: Help -> Debug Output Logging -> Enable
 
 ## Concept
 
 Export Notes, Attachments as JSON in one Line
+
+Then python script that creates hardlinks of all files in folder
 
 Attachment:
 
