@@ -17,5 +17,6 @@
     "dateModified": "2022-02-12T10:19:42Z",
     "uri": "http://zotero.org/users/local/dTlw9jBu/items/52BIL4P9",
     "localPath": "/home/user/Zotero/storage/52BIL4P9/Stammbaum 1_indiv_complete.pdf",
-    "defaultPath": "files/2/Stammbaum 1_indiv_complete.pdf"
+    "defaultPath": "files/2/Stammbaum 1_indiv_complete.pdf",
+    "saveFile": "function (attachPath, overwriteExisting) {...}"
 }

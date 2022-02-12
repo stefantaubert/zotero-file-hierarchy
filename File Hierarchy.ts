@@ -1,10 +1,12 @@
 declare const Zotero: any
 declare const OS: any
+// declare const fs: any
 
-function log(msg, src: string="test") {
+function log(msg, src: string = "test") {
   Zotero.debug(`File hierarchy: ${src} -> ${msg}`)
 }
 
+//const fs = require('fs')
 
 interface IDescendent {
   id: number;
@@ -26,18 +28,46 @@ interface IParentCollection {
 }
 
 interface IItem {
+  // can be: 'note', 'attachment', 'journalArticle', 'book'
   itemType: string;
-  attachments?: any[];
-  collections?: any[];
+}
+
+interface ITopItem extends IItem {
+  // can be: 'note', 'attachment', 'journalArticle', 'book'
+  collections: string[];
+}
+
+interface IDefaultItem extends ITopItem {
+  title: string;
+  attachments: IAttachment[];
+  notes: INote[];
+}
+
+interface IAttachmentItem extends ITopItem {
+  title: string;
+  filename: string;
+  localPath: string;
+  saveFile(attachPath: string, overwriteExisting: boolean): void;
+}
+
+interface INoteItem extends ITopItem {
+  attachments: IAttachment[];
+  note: string
+}
+
+interface IAttachment extends IItem {
+  title: string;
+  filename: string;
+  localPath: string;
+  saveFile(attachPath: string, overwriteExisting: boolean): void;
+}
+
+interface INote extends IItem {
+  note: string
 }
 
 
 class Exporter {
-  private path: Record<string, string> = {}
-  private saved: Record<string, boolean> = {}
-
-  constructor() { }
-
   public getPathsForCollection(collection: IParentCollection) {
     const rootPath = this.clean(collection.fields.name)
     let paths: Record<string, string> = {}
@@ -45,8 +75,8 @@ class Exporter {
 
     log(collection, "parent-collection");
     log(collection.descendents, "parent-collection desc");
-    for (let desc of collection.descendents){
-      for (let res of this.getDescendentPathsRecursive(desc, rootPath)){
+    for (let desc of collection.descendents) {
+      for (let res of this.getDescendentPathsRecursive(desc, rootPath)) {
         const key = res[0];
         const subPath = res[1];
         paths[key] = subPath;
@@ -57,7 +87,7 @@ class Exporter {
   }
 
   private *getDescendentPathsRecursive(descendent: IDescendent, parentFolder: string): IterableIterator<string[]> {
-    if (descendent.type == "collection"){
+    if (descendent.type == "collection") {
       const cleanName = this.clean(descendent.name)
       const descendentFolder = this.join(parentFolder, cleanName)
       yield [descendent.key, descendentFolder];
@@ -76,60 +106,104 @@ class Exporter {
     return p.filter(_ => _).join('/')
   }
 
-  private register(collection, path?: string) {
-    const key = (collection.primary ? collection.primary : collection).key
-    const children = collection.children || collection.descendents || []
-    const collections = children.filter(coll => coll.type === 'collection')
-    const name = this.clean(collection.name)
-
-    this.path[key] = this.join(path, name)
-
-    for (collection of collections) {
-      this.register(collection, this.path[key])
-    }
-  }
-
   clean(filename: string): string {
     const result = filename.replace(/[\x00-\x1F\x7F\/\\:*?"<>|$%]/g, encodeURIComponent);
     return result;
   }
 
-  split(filename) {
+  split(filename: string): string[] {
     const dot = filename.lastIndexOf('.')
-    return (dot < 1 || dot === (filename.length - 1)) ? [ filename, '' ] : [ filename.substring(0, dot), filename.substring(dot) ]
+    return (dot < 1 || dot === (filename.length - 1)) ? [filename, ''] : [filename.substring(0, dot), filename.substring(dot)]
   }
 
-  save(item: IItem) {
-    log(JSON.stringify(item), "save_item");
-    const attachments = (item.itemType === 'attachment') ? [ item ] : (item.attachments || [])
-    let collections = (item.collections || []).map(key => this.path[key]).filter(coll => coll)
-    if (!collections.length) collections = [ '' ] // if the item is not in a collection, save it in the root.
+  public exportItem(item: ITopItem, paths: Record<string, string>) {
+    switch (item.itemType) {
+      case "attachment":
+        this.exportAttachmentItem(item as IAttachmentItem, paths);
+        break;
+      case "note":
+        // export not possible because method does not exist
+        // this.exportNoteItem(item as INoteItem, paths);
+        break;
+      default:
+        this.exportDefaultItem(item as IDefaultItem, paths);
+        break;
+    }
+  }
 
-    for (const att of attachments) {
-      if (!att.defaultPath) continue
+  private exportDefaultItem(item: IDefaultItem, paths: Record<string, string>) {
+    Zotero.debug(item);
+    for (let collection of item.collections) {
+      if (collection in paths) {
+        const folder = paths[collection];
+        const itemFolderName = this.clean(item.title);
+        const [folder_base, folder_ext] = this.split(itemFolderName);
+        if (item.attachments.length == 1) {
+          const attachment = item.attachments[0];
+          const fileName = this.clean(attachment.filename)
+          const [file_base, file_ext] = this.split(fileName);
+          const fileHasSameNameAsItem = folder_base === file_base;
+          var fullPath: string;
+          if (fileHasSameNameAsItem) {
+            fullPath = this.join(folder, fileName);
+          }
+          else {
+            fullPath = this.join(folder, folder_base, fileName);
+          }
 
-      const [ base, ext ] = this.split(this.clean(att.filename))
-      const subdir = att.contentType === 'text/html' ? base : ''
-
-      for (const coll of collections) {
-        log(JSON.stringify(coll), "collections");
-        //const childs = coll.getChildItems();
-
-        const path = this.join(coll, subdir, base)
-
-        let filename = `${path}${ext}`
-        let postfix = 0
-        while (this.saved[filename.toLowerCase()]) {
-          filename = `${path}_${++postfix}${ext}`
+          log(JSON.stringify(fullPath), "saving")
+          attachment.saveFile(fullPath, true);
+          //fs.writeFileSync(fullPath, "test");
+          // is more or less required
+          Zotero.write(`${attachment.localPath};${fullPath}\n`)
+          Zotero.write(JSON.stringify(attachment) + "\n")
         }
-        this.saved[filename.toLowerCase()] = true
-
-        log(JSON.stringify(filename), "collections2")
-        att.saveFile(filename, true)
-        Zotero.write(`${filename}\n`)
+        else {
+          for (let attachment of item.attachments) {
+            const fileName = this.clean(attachment.filename)
+            const fullPath = this.join(folder, folder_base, fileName);
+            log(JSON.stringify(fullPath), "saving")
+            attachment.saveFile(fullPath, true);
+            //fs.writeFileSync(fullPath, "test");
+            // is more or less required
+            Zotero.write(`${attachment.localPath};${fullPath}\n`)
+            Zotero.write(JSON.stringify(attachment) + "\n")
+          }
+        }
       }
     }
   }
+
+  private exportAttachmentItem(item: IAttachmentItem, paths: Record<string, string>) {
+    // const existingInPaths = item.collections.filter(s => s in paths);
+    Zotero.debug(item);
+    for (let collection of item.collections) {
+      if (collection in paths) {
+        const folder = paths[collection];
+        const fileName = this.clean(item.filename)
+        const fullPath = this.join(folder, fileName);
+        log(JSON.stringify(fullPath), "saving")
+        item.saveFile(fullPath, true);
+        Zotero.write(`${item.localPath};${fullPath}\n`)
+        Zotero.write(JSON.stringify(item) + "\n")
+      }
+    }
+  }
+
+  // private exportNoteItem(item: INoteItem, paths: Record<string, string>) {
+  //   Zotero.debug(item);
+  //   for (let collection of item.collections) {
+  //     if (collection in paths) {
+  //       const folder = paths[collection];
+  //       const fileName = "Note";
+  //       //const fullPath = this.join(folder, fileName);
+  //       //log(JSON.stringify(fullPath), "save as")
+  //       //item.saveFile(fullPath, true);
+  //       // is more or less required
+  //       // Zotero.write(`${fullPath}\n`)
+  //     }
+  //   }
+  // }
 }
 
 function doExport() {
@@ -151,8 +225,10 @@ function doExport() {
 
   log('collections: ' + JSON.stringify(this.path), "constructor2")
 
-  let item: IItem;
+  let item: ITopItem;
   while ((item = Zotero.nextItem())) {
-    exporter.save(item)
+    log(JSON.stringify(item), "item");
+    exporter.exportItem(item, finalPaths);
+    // exporter.save(item)
   }
 }
