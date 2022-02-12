@@ -20,3 +20,60 @@ When installed in Zotero, this translator will allow exporting attachments of it
 
 https://www.zotero.org/support/dev/translators/coding
 npm i @types/node
+
+## Concept
+
+Export Notes, Attachments as JSON in one Line
+
+Attachment:
+
+```json
+{
+    // "attachment"
+    "type": string,
+    // path to file
+    "path": string,
+    // collection structure
+    "structure": string[],
+    // parent item if one exist
+    "item?": string,
+}
+```
+
+Note:
+
+```json
+{
+    // "note"
+    "type": string,
+    // content of note
+    "content": string,
+    // collection structure
+    "structure": string[],
+    // parent item if one exist
+    "item?": string,
+}
+```
+
+Item:
+
+```json
+{
+    // "item"
+    "type": string,
+    // collection structure
+    "structure": string[],
+    "item": string,
+}
+```
+
+Collection:
+
+```json
+{
+    // "collection"
+    "type": string,
+    // collection structure
+    "structure": string[],
+}
+```
