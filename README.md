@@ -4,14 +4,18 @@ When installed in Zotero, this translator will allow exporting attachments of it
 
 **How to install**
 1.  Download the [File Hierarchy.js](https://raw.githubusercontent.com/retorquere/zotero-file-hierarchy/master/File%20Hierarchy.js "File Hierarchy.js") file from [zotero-file-hierarchy](https://github.com/retorquere/zotero-file-hierarchy) GitHub page
-2. Move the "File Hierarchy.js" file to "[User home directory]/Zotero/translators" folder 
-3. Restart Zotero 
+2. Move the "File Hierarchy.js" file to "[User home directory]/Zotero/translators" folder
+3. Restart Zotero
 
 **How to run**
-1. Select and right click your My Library or a collection 
+1. Select and right click your My Library or a collection
 2. Select "Export Library…"
 3. Select format “File Hierarchy” and enable the checkbox for “Export Files”. Then click *OK*.
 4. Select the target location for the export under “Where” and Save.
 
-**Note to users:** 
+**Note to users:**
 * Exported files will be duplicated if an item belongs to multiple collections
+
+## Dev
+
+https://www.zotero.org/support/dev/translators/coding

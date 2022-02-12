@@ -5,71 +5,25 @@ function log(msg, src: string="test") {
   Zotero.debug(`File hierarchy: ${src} -> ${msg}`)
 }
 
-
-interface IDescendent {
-  id: number;
-  name: string;
-  key: string;
-  // type is 'item' or 'collection'
-  type: string;
-  children?: IDescendent[];
-}
-
-interface IParentCollection {
-  primary: {
-    key: string;
-  };
-  fields: {
-    name: string;
-  }
-  descendents: IDescendent[];
-}
-
-interface IItem {
+interface IItem{
   itemType: string;
   attachments?: any[];
   collections?: any[];
 }
 
-
-class Exporter {
+class Collections {
   private path: Record<string, string> = {}
   private saved: Record<string, boolean> = {}
 
-  constructor() { }
+  constructor() {
+    let coll;
 
-  public getPathsForCollection(collection: IParentCollection) {
-    const rootPath = this.clean(collection.fields.name)
-    let paths: Record<string, string> = {}
-    paths[collection.primary.key] = rootPath
-
-    log(collection, "parent-collection");
-    log(collection.descendents, "parent-collection desc");
-    for (let desc of collection.descendents){
-      for (let res of this.getDescendentPathsRecursive(desc, rootPath)){
-        const key = res[0];
-        const subPath = res[1];
-        paths[key] = subPath;
-      }
+    while (coll = Zotero.nextCollection()) {
+      this.register(coll)
+      log(JSON.stringify(coll), "constructor");
     }
 
-    return paths;
-  }
-
-  private *getDescendentPathsRecursive(descendent: IDescendent, parentFolder: string): IterableIterator<string[]> {
-    if (descendent.type == "collection"){
-      const cleanName = this.clean(descendent.name)
-      const descendentFolder = this.join(parentFolder, cleanName)
-      yield [descendent.key, descendentFolder];
-
-      if (descendent.children != null) {
-        for (let child of descendent.children) {
-          for (const tuple of this.getDescendentPathsRecursive(child, descendentFolder)) {
-            yield tuple;
-          }
-        }
-      }
-    }
+    log('collections: ' + JSON.stringify(this.path), "constructor2")
   }
 
   private join(...p: string[]) {
@@ -89,9 +43,8 @@ class Exporter {
     }
   }
 
-  clean(filename: string): string {
-    const result = filename.replace(/[\x00-\x1F\x7F\/\\:*?"<>|$%]/g, encodeURIComponent);
-    return result;
+  clean(filename) {
+    return filename.replace(/[\x00-\x1F\x7F\/\\:*?"<>|$%]/g, encodeURIComponent)
   }
 
   split(filename) {
@@ -135,24 +88,10 @@ class Exporter {
 function doExport() {
   if (!Zotero.getOption('exportFileData')) throw new Error('File Hierarchy needs "Export File Data" to be on')
 
-  const exporter = new Exporter();
-
-  let finalPaths: Record<string, string> = {}
-  let parentCollections: IParentCollection;
-
-  while (parentCollections = Zotero.nextCollection()) {
-    log(JSON.stringify(parentCollections), "constructor");
-    const paths = exporter.getPathsForCollection(parentCollections);
-    log(JSON.stringify(paths), "paths");
-    finalPaths = Object.assign(finalPaths, paths)
-  }
-
-  log(JSON.stringify(finalPaths), "final paths");
-
-  log('collections: ' + JSON.stringify(this.path), "constructor2")
+  const collections = new Exporter();
 
   let item: IItem;
   while ((item = Zotero.nextItem())) {
-    exporter.save(item)
+    collections.save(item)
   }
 }
