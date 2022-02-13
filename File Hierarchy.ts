@@ -1,11 +1,11 @@
 declare const Zotero: any
 declare const OS: any
+// declare const Components: any
+// declare const ZoteroPane_Local: any
 
 function log(msg, src: string = "test") {
   Zotero.debug(`File hierarchy: ${src} -> ${msg}`)
 }
-
-//const fs = require('fs')
 
 interface IDescendent {
   id: number;
@@ -46,6 +46,8 @@ interface IAttachmentItem extends ITopItem {
   title: string;
   filename: string;
   localPath: string;
+  // "imported_file" or "linked_file"
+  linkMode: string;
   saveFile(attachPath: string, overwriteExisting: boolean): void;
 }
 
@@ -58,6 +60,8 @@ interface IAttachment extends IItem {
   title: string;
   filename: string;
   localPath: string;
+  // "imported_file" or "linked_file"
+  linkMode: string;
   saveFile(attachPath: string, overwriteExisting: boolean): void;
 }
 
@@ -122,7 +126,7 @@ class Exporter {
         break;
       case "note":
         // export not possible because method does not exist
-        // this.exportNoteItem(item as INoteItem, paths);
+        this.exportNoteItem(item as INoteItem, paths);
         break;
       default:
         this.exportDefaultItem(item as IDefaultItem, paths);
@@ -131,7 +135,6 @@ class Exporter {
   }
 
   private exportDefaultItem(item: IDefaultItem, paths: Record<string, string>) {
-    Zotero.debug(item);
     for (let collection of item.collections) {
       if (collection in paths) {
         const folder = paths[collection];
@@ -175,7 +178,7 @@ class Exporter {
 
   private exportAttachmentItem(item: IAttachmentItem, paths: Record<string, string>) {
     // const existingInPaths = item.collections.filter(s => s in paths);
-    Zotero.debug(item);
+    Zotero.debug(JSON.stringify(item));
     for (let collection of item.collections) {
       if (collection in paths) {
         const folder = paths[collection];
@@ -189,25 +192,32 @@ class Exporter {
     }
   }
 
-  // private exportNoteItem(item: INoteItem, paths: Record<string, string>) {
-  //   Zotero.debug(item);
-  //   for (let collection of item.collections) {
-  //     if (collection in paths) {
-  //       const folder = paths[collection];
-  //       const fileName = "Note";
-  //       //const fullPath = this.join(folder, fileName);
-  //       //log(JSON.stringify(fullPath), "save as")
-  //       //item.saveFile(fullPath, true);
-  //       // is more or less required
-  //       // Zotero.write(`${fullPath}\n`)
-  //     }
-  //   }
-  // }
+  private exportNoteItem(item: INoteItem, paths: Record<string, string>) {
+    for (let collection of item.collections) {
+      if (collection in paths) {
+        const folder = paths[collection];
+        const fileName = "Note.html";
+        let encoder = new TextEncoder();                                   // This encoder can be reused for several writes
+        let array = encoder.encode(item.note);                   // Convert the text to an array
+        const fullPath = this.join(folder, fileName);
+        OS.File.writeAtomic(fullPath, array, { tmpPath: `${fullPath}.tmp` });
+        log(JSON.stringify(fullPath), "saving note")
+        //item.saveFile(fullPath, true);
+        // is more or less required
+        // Zotero.write(`${fullPath}\n`)
+      }
+    }
+  }
 }
 
 function doExport() {
   if (!Zotero.getOption('exportFileData')) throw new Error('File Hierarchy needs "Export File Data" to be on')
 
+  // Zotero.debug(OS.File.exists("/tmp/test.txt"));
+  // return;
+  // Zotero.debug(Components);
+  // Zotero.debug(ZoteroPane_Local);
+  // return;
   const exporter = new Exporter();
 
   let finalPaths: Record<string, string> = {}
