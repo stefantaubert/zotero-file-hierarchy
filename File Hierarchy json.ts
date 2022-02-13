@@ -47,7 +47,6 @@ interface IAttachmentItem extends ITopItem {
   title: string;
   filename: string;
   localPath: string;
-  saveFile(attachPath: string, overwriteExisting: boolean): void;
 }
 
 interface INoteItem extends ITopItem {
@@ -59,24 +58,52 @@ interface IAttachment extends IItem {
   title: string;
   filename: string;
   localPath: string;
-  saveFile(attachPath: string, overwriteExisting: boolean): void;
 }
 
 interface INote extends IItem {
   note: string
 }
 
+interface IExportItem {
+  type: string;
+  structure: string[];
+}
+
+interface IExportDefault extends IExportItem {
+  item: string;
+}
+
+interface IExportAttachment extends IExportItem {
+  path: string;
+  item?: string;
+}
+
+interface IExportNote extends IExportItem {
+  content: string;
+  item?: string;
+}
+
+interface IExportCollection extends IExportItem {
+}
+
+interface IExport {
+  attachments: IExportAttachment[];
+  notes: IExportNote[];
+  items: IExportItem[];
+
+}
 
 class Exporter {
-  public getPathsForCollection(collection: IParentCollection) {
-    const rootPath = this.clean(collection.fields.name)
-    let paths: Record<string, string> = {}
-    paths[collection.primary.key] = rootPath
+  public getPathsForCollection(collection: IParentCollection): Record<string, Array<string>> {
+    let paths: Record<string, Array<string>> = {}
+    const parentFolders = new Array<string>();
+    parentFolders.push(collection.fields.name);
+    paths[collection.primary.key] = parentFolders
 
     log(collection, "parent-collection");
     log(collection.descendents, "parent-collection desc");
     for (let desc of collection.descendents) {
-      for (let res of this.getDescendentPathsRecursive(desc, rootPath)) {
+      for (let res of this.getDescendentPathsRecursive(desc, parentFolders)) {
         const key = res[0];
         const subPath = res[1];
         paths[key] = subPath;
@@ -86,15 +113,14 @@ class Exporter {
     return paths;
   }
 
-  private *getDescendentPathsRecursive(descendent: IDescendent, parentFolder: string): IterableIterator<string[]> {
+  private *getDescendentPathsRecursive(descendent: IDescendent, parentFolders: Array<string>): IterableIterator<[string, Array<string>]> {
     if (descendent.type == "collection") {
-      const cleanName = this.clean(descendent.name)
-      const descendentFolder = this.join(parentFolder, cleanName)
-      yield [descendent.key, descendentFolder];
-
+      var newFolder: Array<string> = Object.assign([], parentFolders);
+      newFolder.push(descendent.name);
+      yield [descendent.key, newFolder];
       if (descendent.children != null) {
         for (let child of descendent.children) {
-          for (const tuple of this.getDescendentPathsRecursive(child, descendentFolder)) {
+          for (const tuple of this.getDescendentPathsRecursive(child, newFolder)) {
             yield tuple;
           }
         }
@@ -116,7 +142,8 @@ class Exporter {
     return (dot < 1 || dot === (filename.length - 1)) ? [filename, ''] : [filename.substring(0, dot), filename.substring(dot)]
   }
 
-  public exportItem(item: ITopItem, paths: Record<string, string>) {
+
+  public exportItem(item: ITopItem, paths: Record<string, string[]>) {
     switch (item.itemType) {
       case "attachment":
         this.exportAttachmentItem(item as IAttachmentItem, paths);
@@ -131,10 +158,18 @@ class Exporter {
     }
   }
 
-  private exportDefaultItem(item: IDefaultItem, paths: Record<string, string>) {
+  private exportDefaultItem(item: IDefaultItem, paths: Record<string, string[]>) {
     Zotero.debug(item);
     for (let collection of item.collections) {
       if (collection in paths) {
+
+        const res: IExportDefault = {
+          type: "item",
+          structure: paths[collection],
+          item: item.title,
+        };
+        Zotero.write(JSON.stringify(res) + "\n")
+
         const folder = paths[collection];
         const itemFolderName = this.clean(item.title);
         const [folder_base, folder_ext] = this.split(itemFolderName);
@@ -152,7 +187,7 @@ class Exporter {
           }
 
           log(JSON.stringify(fullPath), "saving")
-          attachment.saveFile(fullPath, true);
+          // attachment.saveFile(fullPath, true);
           //fs.writeFileSync(fullPath, "test");
           // is more or less required
           Zotero.write(`${attachment.localPath};${fullPath}\n`)
@@ -163,7 +198,7 @@ class Exporter {
             const fileName = this.clean(attachment.filename)
             const fullPath = this.join(folder, folder_base, fileName);
             log(JSON.stringify(fullPath), "saving")
-            attachment.saveFile(fullPath, true);
+            // attachment.saveFile(fullPath, true);
             //fs.writeFileSync(fullPath, "test");
             // is more or less required
             Zotero.write(`${attachment.localPath};${fullPath}\n`)
@@ -183,7 +218,7 @@ class Exporter {
         const fileName = this.clean(item.filename)
         const fullPath = this.join(folder, fileName);
         log(JSON.stringify(fullPath), "saving")
-        item.saveFile(fullPath, true);
+        // item.saveFile(fullPath, true);
         Zotero.write(`${item.localPath};${fullPath}\n`)
         Zotero.write(JSON.stringify(item) + "\n")
       }
@@ -211,7 +246,7 @@ function doExport() {
 
   const exporter = new Exporter();
 
-  let finalPaths: Record<string, string> = {}
+  let finalPaths: Record<string, string[]> = {}
   let parentCollections: IParentCollection;
 
   while (parentCollections = Zotero.nextCollection()) {
@@ -222,6 +257,14 @@ function doExport() {
   }
 
   log(JSON.stringify(finalPaths), "final paths");
+
+  for (let path of Object.values(finalPaths)) {
+    const res: IExportCollection = {
+      type: "collection",
+      structure: path
+    }
+    Zotero.write(JSON.stringify(res) + "\n");
+  }
 
   log('collections: ' + JSON.stringify(this.path), "constructor2")
 
